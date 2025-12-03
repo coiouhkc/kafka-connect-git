@@ -21,10 +21,10 @@ class GitSourceTaskTest {
   void testGitSourceTask() throws IOException, GitAPIException, InterruptedException {
     Path testdir = Files.createTempDirectory("testdir");
     try (Git git = Git.init().setDirectory(testdir.toFile()).call()) {
-      git.add().setAll(true).call();
+      git.add().addFilepattern(".").call();
       git.commit().setMessage("Initial commit").call();
       Path testfile1 = Files.createTempFile(testdir, "testfile1-", ".txt");
-      git.add().setAll(true).call();
+      git.add().addFilepattern(".").call();
       git.commit().setMessage("Add " + testfile1.getFileName().toString()).call();
     }
 

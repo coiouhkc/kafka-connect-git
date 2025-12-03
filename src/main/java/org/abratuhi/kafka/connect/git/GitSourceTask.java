@@ -2,9 +2,11 @@ package org.abratuhi.kafka.connect.git;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.eclipse.jgit.api.Git;
@@ -18,15 +20,32 @@ import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 
 public class GitSourceTask extends SourceTask {
-  private final Queue<GitSourceCommitChange> changes = new ConcurrentLinkedQueue<>();
+  private final Queue<Struct> changes = new ConcurrentLinkedQueue<>();
 
   private String gitRepoDir;
   private String targetTopicName;
+  private Schema valueSchema;
 
   @Override
   public void start(Map<String, String> props) {
     this.gitRepoDir = props.get(GitSourceConfig.SOURCE_GITREPO_DIR);
     this.targetTopicName = props.get(GitSourceConfig.TARGET_TOPIC_NAME);
+
+    this.valueSchema =
+        SchemaBuilder.struct()
+            .name("GitSourceCommitChange")
+            .field("commitId", SchemaBuilder.STRING_SCHEMA)
+            .field("shortMessage", SchemaBuilder.STRING_SCHEMA)
+            .field("authorEmail", SchemaBuilder.STRING_SCHEMA)
+            .field("committerEmail", SchemaBuilder.STRING_SCHEMA)
+            .field("authoredAt", SchemaBuilder.INT32_SCHEMA)
+            .field("committedAt", SchemaBuilder.INT32_SCHEMA)
+            .field("oldPath", SchemaBuilder.STRING_SCHEMA)
+            .field("newPath", SchemaBuilder.STRING_SCHEMA)
+            .field("linesInserted", SchemaBuilder.INT32_SCHEMA)
+            .field("linesDeleted", SchemaBuilder.INT32_SCHEMA)
+            .field("changeType", SchemaBuilder.STRING_SCHEMA)
+            .build();
 
     try (Git git = Git.open(new File(gitRepoDir));
         ObjectReader reader = git.getRepository().newObjectReader();
@@ -57,18 +76,18 @@ public class GitSourceTask extends SourceTask {
           int inserted = deletedAndInserted.get(1);
 
           this.changes.add(
-              new GitSourceCommitChange(
-                  rc.getId().getName(),
-                  rc.getShortMessage(),
-                  rc.getAuthorIdent().getEmailAddress(),
-                  rc.getCommitterIdent().getEmailAddress(),
-                  Instant.ofEpochSecond(rc.getCommitTime()),
-                  Instant.ofEpochSecond(rc.getCommitTime()),
-                  change.getOldPath(),
-                  change.getNewPath(),
-                  inserted,
-                  deleted,
-                  change.getChangeType().name()));
+              new Struct(valueSchema)
+                  .put("commitId", rc.getId().getName())
+                  .put("shortMessage", rc.getShortMessage())
+                  .put("authorEmail", rc.getAuthorIdent().getEmailAddress())
+                  .put("committerEmail", rc.getCommitterIdent().getEmailAddress())
+                  .put("authoredAt", rc.getCommitTime())
+                  .put("committedAt", rc.getCommitTime())
+                  .put("oldPath", change.getOldPath())
+                  .put("newPath", change.getNewPath())
+                  .put("linesInserted", inserted)
+                  .put("linesDeleted", deleted)
+                  .put("changeType", change.getChangeType().name()));
         }
       }
     } catch (IOException | GitAPIException e) {
@@ -80,15 +99,15 @@ public class GitSourceTask extends SourceTask {
   public List<SourceRecord> poll() throws InterruptedException {
     List<SourceRecord> result = new ArrayList<>();
     while (!changes.isEmpty()) {
-      GitSourceCommitChange change = changes.poll();
-      result.add(new SourceRecord(null, null, targetTopicName, null, change));
+      Struct change = changes.poll();
+      result.add(new SourceRecord(null, null, targetTopicName, valueSchema, change));
     }
     return result;
   }
 
   @Override
   public void stop() {
-      changes.clear();
+    changes.clear();
   }
 
   @Override

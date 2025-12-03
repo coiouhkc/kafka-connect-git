@@ -1,0 +1,21 @@
+### GET request to example server
+POST http://localhost:8083/connectors
+Content-Type: application/json
+
+{
+  "name": "my-git-source-connector",
+  "config": {
+    "connector.class": "org.abratuhi.kafka.connect.git.GitSourceConnector",
+    "tasks.max": "1",
+    "topic.name": "my-git-source-topic",
+    "gitrepo.dir": "/tmp/repo"
+  }
+}
+
+###
+
+GET http://localhost:8083/connectors/my-git-source-connector
+
+###
+
+GET http://localhost:8083/connectors/my-git-source-connector/status
