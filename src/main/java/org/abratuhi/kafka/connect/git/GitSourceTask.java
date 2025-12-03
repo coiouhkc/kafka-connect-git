@@ -26,6 +26,8 @@ public class GitSourceTask extends SourceTask {
   private String targetTopicName;
   private Schema valueSchema;
 
+  private String lastCommitId;
+
   @Override
   public void start(Map<String, String> props) {
     this.gitRepoDir = props.get(GitSourceConfig.SOURCE_GITREPO_DIR);
@@ -52,8 +54,21 @@ public class GitSourceTask extends SourceTask {
         DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE); ) {
       diffFormatter.setRepository(git.getRepository());
       Iterator<RevCommit> it = git.log().call().iterator();
+      String currentHeadCommitId = null;
+      String currentCommitId;
       while (it.hasNext()) {
         RevCommit rc = it.next();
+
+        currentCommitId = rc.getId().getName();
+
+        if (currentHeadCommitId == null) {
+            currentHeadCommitId = currentCommitId;
+        }
+
+        if (lastCommitId != null && lastCommitId.equals(currentHeadCommitId)) {
+            lastCommitId = currentHeadCommitId;
+            break;
+        }
 
         List<DiffEntry> changes =
             git.diff()
