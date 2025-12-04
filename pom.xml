@@ -18,6 +18,7 @@
         <assertj-core.version>3.23.1</assertj-core.version>
         <!--<org.eclipse.jgit.version>7.4.0.202509020913-r</org.eclipse.jgit.version>-->
         <org.eclipse.jgit.version>6.10.1.202505221210-r</org.eclipse.jgit.version>
+        <commons-io.version>2.20.0</commons-io.version>
     </properties>
 
     <dependencies>
@@ -44,6 +45,11 @@
             <artifactId>assertj-core</artifactId>
             <version>${assertj-core.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons-io.version}</version>
         </dependency>
 
     </dependencies>

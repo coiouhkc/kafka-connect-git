@@ -48,7 +48,10 @@ public class GitSourceTask extends SourceTask {
             .field("linesDeleted", SchemaBuilder.INT32_SCHEMA)
             .field("changeType", SchemaBuilder.STRING_SCHEMA)
             .build();
+  }
 
+  @Override
+  public List<SourceRecord> poll() throws InterruptedException {
     try (Git git = Git.open(new File(gitRepoDir));
         ObjectReader reader = git.getRepository().newObjectReader();
         DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE); ) {
@@ -62,12 +65,16 @@ public class GitSourceTask extends SourceTask {
         currentCommitId = rc.getId().getName();
 
         if (currentHeadCommitId == null) {
-            currentHeadCommitId = currentCommitId;
+          currentHeadCommitId = currentCommitId;
         }
 
-        if (lastCommitId != null && lastCommitId.equals(currentHeadCommitId)) {
+        if (lastCommitId == null) {
+          lastCommitId = currentCommitId;
+        } else {
+          if (lastCommitId.equals(currentCommitId)) {
             lastCommitId = currentHeadCommitId;
             break;
+          }
         }
 
         List<DiffEntry> changes =
@@ -108,10 +115,7 @@ public class GitSourceTask extends SourceTask {
     } catch (IOException | GitAPIException e) {
       throw new RuntimeException(e);
     }
-  }
 
-  @Override
-  public List<SourceRecord> poll() throws InterruptedException {
     List<SourceRecord> result = new ArrayList<>();
     while (!changes.isEmpty()) {
       Struct change = changes.poll();
