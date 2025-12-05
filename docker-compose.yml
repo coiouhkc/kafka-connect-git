@@ -56,7 +56,7 @@ services:
     volumes:
       # - ./target:/opt/kafka/plugins
       # - ./config:/tmp/config
-      - /tmp/tmp.lLVfPusVor/repo:/tmp/repo
+      - /tmp/repo:/tmp/repo
     command: /opt/kafka/bin/connect-distributed.sh /tmp/config/connect-distributed.properties
     healthcheck:
       test:
